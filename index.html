@@ -12,7 +12,7 @@ body { margin:0; background:#111; font-family:Arial,sans-serif; color:white; }
 .title { text-align:center; margin-bottom:15px; }
 .panel { background:#2b2b2b; border-radius:18px; padding:22px; }
 .header-line { font-size:28px; margin-bottom:15px; font-weight:bold; }
-.departure { display:flex; justify-content:space-between; align-items:center; padding:8px 14px; border-bottom:1px solid #444; border-radius:10px; margin-bottom:5px; transition: all 0.3s; }
+.departure { display:flex; justify-content:space-between; align-items:center; padding:8px 14px; border-bottom:1px solid #444; border-radius:10px; margin-bottom:5px; }
 .line-box { background:#d60000; padding:8px 18px; border-radius:10px; font-weight:bold; font-size:24px; }
 .time { color:orange; font-size:32px; font-weight:bold; transition: color 0.3s; }
 </style>
@@ -47,7 +47,7 @@ function updateClock() {
 updateClock();
 setInterval(updateClock, 1000);
 
-// -------- Wetter --------
+// -------- Wetter (alle 5 Minuten) --------
 async function updateWeather(){
     try{
         const r = await fetch("https://api.open-meteo.com/v1/forecast?latitude=48.2&longitude=16.37&current_weather=true");
@@ -57,56 +57,15 @@ async function updateWeather(){
     }catch{ document.getElementById("weather").innerText="--°C Wien"; }
 }
 updateWeather();
-setInterval(updateWeather, 5*60*1000);
+setInterval(updateWeather, 5*60*1000); // 5 Minuten
 
-// -------- Abfahrten in Minuten --------
-function calcMinutesUntil(planned){
-    const match = planned.match(/T(\d{2}):(\d{2})/);
-    if(!match) return null;
-    const now = new Date();
-    const nowMin = now.getHours()*60 + now.getMinutes();
-    const targetMin = parseInt(match[1])*60 + parseInt(match[2]);
-    const diff = targetMin - nowMin;
-    return diff>=0 ? diff : null;
-}
-
+// -------- Abfahrten / Ankünfte in Minuten --------
 async function updateTimes(){
-    try{
-        // HIER DEIN SERVER EINFÜGEN: IP oder Domain, z.B.: http://192.168.1.10:3000/getDepartures
-        const res = await fetch("http://DEIN_SERVER:3000/getDepartures");
-        const data = await res.json();
-        const lines = data.data?.monitors?.[0]?.lines || [];
-        const u1 = lines.find(l=>l.name==="U1");
-        const deps = u1?.departures?.departure || [];
+    try {
+        // Vienna Transport API: nächste Abfahrten für U1 Oberlaa
+        const r = await fetch("https://vtapi.floscodes.net/monitor/?station=Oberlaa&lines=U1&countdown");
+        const data = await r.json();
+        const departures = data?.departures?.slice(0,4) || [];
 
         for(let i=0;i<4;i++){
-            const dep = deps[i];
-            const el = document.getElementById("t"+(i+1));
-            if(!dep?.departureTime?.timePlanned){
-                el.innerText="--";
-                el.style.color = "orange";
-                continue;
-            }
-            const diff = calcMinutesUntil(dep.departureTime.timePlanned);
-            if(diff !== null){
-                el.innerText = diff + " Min";
-                el.style.color = diff <= 2 ? "red" : "orange"; // <3 Min rot
-            } else {
-                el.innerText="--";
-                el.style.color="orange";
-            }
-        }
-    } catch(e){
-        console.log("Fehler Abfahrten", e);
-        for(let i=1;i<=4;i++){
-            const el = document.getElementById("t"+i);
-            el.innerText="--";
-            el.style.color="orange";
-        }
-    }
-}
-updateTimes();
-setInterval(updateTimes,10000);
-</script>
-</body>
-</html>
+            const el = docum
